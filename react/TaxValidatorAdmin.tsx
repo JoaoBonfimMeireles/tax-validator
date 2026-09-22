@@ -256,5 +256,4 @@ const TaxValidatorAdmin = () => {
     </Layout>
   )
 }
-
 export default TaxValidatorAdmin
