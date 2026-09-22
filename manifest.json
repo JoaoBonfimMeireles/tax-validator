@@ -1,21 +1,114 @@
 {
-  "name": "admin-example",
   "vendor": "vtex",
-  "version": "0.0.12",
-  "title": "Example Admin App",
-  "description": "",
-  "mustUpdateAt": "2022-08-28",
-  "scripts": {
-    "postreleasy": "vtex publish"
-  },
-  "dependencies": {
-    "vtex.styleguide": "9.x"
-  },
+  "name": "tax-validator",
+  "version": "0.1.0",
+  "title": "Validador de Impostos (SAP)",
+  "description": "Consulta a Tax API Whirlpool com dados do catálogo, simulação e logística da VTEX",
   "builders": {
     "react": "3.x",
     "admin": "0.x",
     "messages": "1.x",
-    "docs": "0.x"
+    "docs": "0.x",
+    "node": "7.x"
+  },
+  "dependencies": {
+    "vtex.styleguide": "9.x"
+  },
+  "policies": [
+    {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "api.whirlpool.com",
+        "path": "*"
+      }
+    },
+    {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "{{account}}.vtexcommercestable.com.br",
+        "path": "*"
+      }
+    }
+  ],
+  "billingOptions": {
+    "type": "free",
+    "support": {
+      "url": "https://www.vtex.com.br"
+    },
+    "availableCountries": [
+      "*"
+    ]
+  },
+  "settingsSchema": {
+    "title": "Validador de Impostos (Tax API Whirlpool)",
+    "type": "object",
+    "properties": {
+      "basicAuth": {
+        "title": "BASIC (client_id:secret em Base64)",
+        "type": "string",
+        "access": "private"
+      },
+      "appKey": {
+        "title": "VTEX AppKey para ler organizações/centros de custo (opcional)",
+        "type": "string",
+        "default": ""
+      },
+      "appToken": {
+        "title": "VTEX AppToken (opcional)",
+        "type": "string",
+        "access": "private"
+      },
+      "tokenUrl": {
+        "title": "URL do token",
+        "type": "string",
+        "default": "https://api.whirlpool.com/oauth2/v1/token"
+      },
+      "taxUrl": {
+        "title": "URL da Tax API",
+        "type": "string",
+        "default": "https://api.whirlpool.com/d2c/v1/merx2/ecc-service/tax-api"
+      },
+      "paymentCode": {
+        "title": "Payment code",
+        "type": "string",
+        "default": "H001"
+      },
+      "salesChannel": {
+        "title": "Política comercial (sc)",
+        "type": "string",
+        "default": "1"
+      },
+      "sellerIdPadrao": {
+        "title": "Seller padrão",
+        "type": "string",
+        "default": "1"
+      },
+      "warehousePadrao": {
+        "title": "Warehouse padrão (fallback)",
+        "type": "string",
+        "default": ""
+      },
+      "eanPadrao": {
+        "title": "EAN padrão",
+        "type": "string",
+        "default": "0"
+      },
+      "dockId": {
+        "title": "Dock ID",
+        "type": "string",
+        "default": "0"
+      },
+      "taxCode": {
+        "title": "Tax code",
+        "type": "string",
+        "default": ""
+      },
+      "orderDateFixa": {
+        "title": "Data fixa do pedido (AAAAMMDD, vazio = hoje)",
+        "type": "string",
+        "default": ""
+      }
+    }
   },
   "$schema": "https://raw.githubusercontent.com/vtex/node-vtex-api/master/gen/manifest.schema"
 }

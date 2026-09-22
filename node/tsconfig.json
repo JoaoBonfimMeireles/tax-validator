@@ -1,0 +1,9 @@
+{
+  "extends": "@vtex/tsconfig",
+  "compilerOptions": {
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "types": ["node"]
+  },
+  "include": ["./typings/*.d.ts", "./**/*.ts"]
+}

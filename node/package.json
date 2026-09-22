@@ -1,0 +1,15 @@
+{
+  "name": "tax-validator-node",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "co-body": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/co-body": "^6.1.0",
+    "@types/node": "^20.0.0",
+    "@vtex/api": "^7.0.0",
+    "@vtex/tsconfig": "^0.6.0",
+    "typescript": "5.5.3"
+  }
+}
