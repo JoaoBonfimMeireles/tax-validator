@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto'
 
-import type { Config } from './config'
+import { DOCK_ID, EAN_PADRAO, PAYMENT_CODE, TAX_CODE } from './constants'
 
 export type Nivel = 'ok' | 'warn' | 'erro'
 export type Diag = Array<[string, string | number]>
@@ -15,7 +15,6 @@ export interface Produto {
   refId: string
   unitMultiplier: number
   measurementUnit: string
-  taxCode: string
   sellerId: string
   name: string
   matchedBy: string
@@ -62,8 +61,7 @@ export function montarPayload(
   preco: number,
   p: Produto,
   warehouseId: string,
-  freight: number,
-  cfg: Config
+  freight: number
 ) {
   return {
     cacheValidation: false,
@@ -71,7 +69,7 @@ export function montarPayload(
       {
         id: '1',
         sku: p.skuId,
-        ean: p.ean || cfg.eanPadrao,
+        ean: p.ean || EAN_PADRAO,
         refId: p.refId,
         unitMultiplier: p.unitMultiplier || 1,
         measurementUnit: p.measurementUnit || 'un',
@@ -79,19 +77,19 @@ export function montarPayload(
         itemPrice: preco,
         quantity: 1,
         discountPrice: 0,
-        dockId: cfg.dockId,
+        dockId: DOCK_ID,
         freightPrice: Number.isFinite(freight) ? freight : 0,
         brandId: p.brandId,
-        taxCode: p.taxCode || cfg.taxCode,
+        taxCode: TAX_CODE,
         productId: p.productId,
-        sellerId: p.sellerId || cfg.sellerIdPadrao,
+        sellerId: p.sellerId,
         categoryId: p.categoryId,
         discountPercentage: 0,
         warehouseId,
       },
     ],
-    paymentCode: cfg.paymentCode,
-    orderDate: cfg.orderDateFixa || hojeAAAAMMDD(),
+    paymentCode: PAYMENT_CODE,
+    orderDate: hojeAAAAMMDD(),
     taxApp: {
       fields: {
         sapId,

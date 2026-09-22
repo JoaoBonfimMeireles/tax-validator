@@ -37,7 +37,6 @@ const td: React.CSSProperties = {
 
 const agora = () => new Date().toLocaleString('pt-BR')
 
-/** Garante o formato esperado, seja qual for a resposta do servidor. */
 function normalizar(d: any, status: number): Resultado {
   const nivel: Nivel =
     d?.nivel === 'ok' || d?.nivel === 'warn' ? d.nivel : 'erro'

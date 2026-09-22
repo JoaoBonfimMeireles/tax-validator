@@ -3,6 +3,7 @@ import { json } from 'co-body'
 import { resolverCep } from '../services/cep'
 import { resolverEntrega, resolverProduto } from '../services/resolvers'
 import { lerConfig } from '../utils/config'
+import { EAN_PADRAO } from '../utils/constants'
 import { tentarJson } from '../utils/http'
 import type { Diag, LinhaImposto } from '../utils/tax'
 import {
@@ -54,29 +55,23 @@ export async function consultar(ctx: Context) {
       ])
     }
 
-    const cepInfo = await resolverCep(ctx, sapId, cfg, diag)
+    const cepInfo = await resolverCep(ctx, sapId, diag)
 
     diag.push(['CEP de entrega', `${cepInfo.cep} — ${cepInfo.source}`])
 
-    const p = await resolverProduto(ctx, ident, cfg, diag)
+    const p = await resolverProduto(ctx, ident, diag)
 
     diag.push(['skuId', p.skuId])
     diag.push(['Identificado por', p.matchedBy])
     diag.push(['refId', p.refId || '(sem refId)'])
-    diag.push(['EAN', p.ean || cfg.eanPadrao])
+    diag.push(['EAN', p.ean || EAN_PADRAO])
     diag.push(['productId', p.productId || '(n/d)'])
     diag.push(['brandId', p.brandId || '(n/d)'])
     diag.push(['categoryId', p.categoryId || '(n/d)'])
-    diag.push(['sellerId', p.sellerId || cfg.sellerIdPadrao])
+    diag.push(['sellerId', p.sellerId])
     diag.push(['Produto', p.name || ''])
 
-    const ent = await resolverEntrega(
-      ctx,
-      p.skuId,
-      p.sellerId,
-      cepInfo.cep,
-      cfg
-    )
+    const ent = await resolverEntrega(ctx, p.skuId, p.sellerId, cepInfo.cep)
 
     diag.push([
       'warehouseId',
@@ -99,14 +94,7 @@ export async function consultar(ctx: Context) {
 
     diag.push(['Token Whirlpool', 'ok'])
 
-    const payload = montarPayload(
-      sapId,
-      preco,
-      p,
-      ent.warehouseId,
-      ent.freight,
-      cfg
-    )
+    const payload = montarPayload(sapId, preco, p, ent.warehouseId, ent.freight)
     const r = await ctx.clients.whirlpool.consultarImpostos(
       cfg.taxUrl,
       token,

@@ -1,9 +1,6 @@
-import type { Config } from '../utils/config'
 import { tentarJson } from '../utils/http'
 import type { Diag } from '../utils/tax'
 import { resumir } from '../utils/tax'
-
-/* ================= tipos / cache ================= */
 
 interface Org {
   id: string
@@ -32,8 +29,6 @@ let ccsCache: Lista<CepCC> | null = null
 let orgsLoad: Promise<Lista<Org>> | null = null
 let ccsLoad: Promise<Lista<CepCC>> | null = null
 
-/* ================= helpers ================= */
-
 const normSap = (v: unknown) =>
   String(v ?? '')
     .trim()
@@ -48,113 +43,123 @@ function normalizarCep(v: unknown): string {
   return cep.length === 8 ? cep : ''
 }
 
-function authMd(ctx: Context, cfg: Config): Record<string, string> {
-  if (cfg.appKey && cfg.appToken) {
-    return {
-      'X-VTEX-API-AppKey': cfg.appKey,
-      'X-VTEX-API-AppToken': cfg.appToken,
-    }
-  }
-
+function authMd(ctx: Context): Record<string, string> {
   return { VtexIdclientAutCookie: ctx.state.userToken }
 }
 
-/**
- * Mesmo comportamento do fetchVtexDataScroll do Apps Script:
- * 1ª chamada com _fields/_size, depois só _token, até vir vazio.
- * _p é um cache-buster para o IO não devolver sempre a mesma página.
- */
-async function scrollTudo(
+async function scrollPagina(
   ctx: Context,
-  cfg: Config,
+  entidade: string,
+  fields: string,
+  onItem: (item: any) => void,
+  vistos: Set<string>,
+  pagina: number,
+  token: string,
+  total: number
+): Promise<string> {
+  if (pagina > MAX_PAGINAS) {
+    return `${total} lidos — limite de ${MAX_PAGINAS} páginas (INCOMPLETO)`
+  }
+
+  const params = token
+    ? { _token: token, _p: `${pagina}-${Date.now()}` }
+    : { _fields: fields, _size: TAM, _p: `${pagina}-${Date.now()}` }
+
+  const r = await ctx.clients.vtexApi.mdGet(
+    `/api/dataentities/${entidade}/scroll`,
+    params,
+    authMd(ctx)
+  )
+
+  if (r.status === 0 || r.status >= 300) {
+    if (pagina === 1) {
+      throw new Error(
+        `Não consegui ler "${entidade}" (HTTP ${r.status}): ${resumir(
+          r.data,
+          200
+        )}. Confira se o usuário logado no admin tem permissão de Master Data.`
+      )
+    }
+
+    return `${total} lidos em ${pagina - 1} página(s) — parou com HTTP ${
+      r.status
+    } (INCOMPLETO)`
+  }
+
+  const arr = tentarJson(r.data)
+
+  if (!Array.isArray(arr) || !arr.length) {
+    return `${total} lidos em ${pagina - 1} página(s) — completo`
+  }
+
+  let novos = 0
+
+  for (const item of arr) {
+    const id = String(item?.id ?? '')
+
+    if (!id || vistos.has(id)) continue
+    vistos.add(id)
+    novos++
+    onItem(item)
+  }
+
+  const totalAtual = total + novos
+
+  if (novos === 0) {
+    return `${totalAtual} lidos em ${pagina} página(s) — paginação repetida, leitura interrompida (INCOMPLETO)`
+  }
+
+  let proximoToken = token
+
+  if (!proximoToken) {
+    const h = r.headers ?? {}
+
+    proximoToken = String(
+      h['x-vtex-md-token'] ?? h['X-VTEX-MD-TOKEN'] ?? h['X-Vtex-Md-Token'] ?? ''
+    )
+
+    if (!proximoToken) {
+      return arr.length < TAM
+        ? `${totalAtual} lidos em 1 página — completo`
+        : `${totalAtual} lidos — API não devolveu token de scroll (INCOMPLETO)`
+    }
+  }
+
+  return scrollPagina(
+    ctx,
+    entidade,
+    fields,
+    onItem,
+    vistos,
+    pagina + 1,
+    proximoToken,
+    totalAtual
+  )
+}
+
+function scrollTudo(
+  ctx: Context,
   entidade: string,
   fields: string,
   onItem: (item: any) => void
 ): Promise<string> {
-  const auth = authMd(ctx, cfg)
-  const vistos = new Set<string>()
-  let token = ''
-  let total = 0
-
-  for (let pagina = 1; pagina <= MAX_PAGINAS; pagina++) {
-    const params = token
-      ? { _token: token, _p: `${pagina}-${Date.now()}` }
-      : { _fields: fields, _size: TAM, _p: `${pagina}-${Date.now()}` }
-
-    const r = await ctx.clients.vtexApi.mdGet(
-      `/api/dataentities/${entidade}/scroll`,
-      params,
-      auth
-    )
-
-    if (r.status === 0 || r.status >= 300) {
-      if (pagina === 1) {
-        throw new Error(
-          `Não consegui ler "${entidade}" (HTTP ${r.status}): ${resumir(
-            r.data,
-            200
-          )}. ` +
-            'Preencha AppKey/AppToken nas configurações do app (as mesmas do Apps Script B2B).'
-        )
-      }
-
-      return `${total} lidos em ${pagina - 1} página(s) — parou com HTTP ${
-        r.status
-      } (INCOMPLETO)`
-    }
-
-    const arr = tentarJson(r.data)
-
-    if (!Array.isArray(arr) || !arr.length) {
-      return `${total} lidos em ${pagina - 1} página(s) — completo`
-    }
-
-    let novos = 0
-
-    for (const item of arr) {
-      const id = String(item?.id ?? '')
-
-      if (!id || vistos.has(id)) continue
-      vistos.add(id)
-      novos++
-      onItem(item)
-    }
-
-    total += novos
-
-    if (novos === 0) {
-      return `${total} lidos em ${pagina} página(s) — paginação repetida, leitura interrompida (INCOMPLETO)`
-    }
-
-    if (!token) {
-      const h = r.headers ?? {}
-
-      token = String(
-        h['x-vtex-md-token'] ??
-          h['X-VTEX-MD-TOKEN'] ??
-          h['X-Vtex-Md-Token'] ??
-          ''
-      )
-
-      if (!token) {
-        return arr.length < TAM
-          ? `${total} lidos em 1 página — completo`
-          : `${total} lidos — API não devolveu token de scroll (INCOMPLETO)`
-      }
-    }
-  }
-
-  return `${total} lidos — limite de ${MAX_PAGINAS} páginas (INCOMPLETO)`
+  return scrollPagina(
+    ctx,
+    entidade,
+    fields,
+    onItem,
+    new Set<string>(),
+    1,
+    '',
+    0
+  )
 }
 
-/* ================= organizações: SAPID → org ================= */
-
-async function carregarOrgs(ctx: Context, cfg: Config): Promise<Lista<Org>> {
+async function carregarOrgs(ctx: Context): Promise<Lista<Org>> {
   const mapa = new Map<string, Org>()
 
   const info = await scrollTudo(
     ctx,
-    cfg,
     'organizations',
     'id,name,customFields',
     (org) => {
@@ -171,14 +176,11 @@ async function carregarOrgs(ctx: Context, cfg: Config): Promise<Lista<Org>> {
   return { em: Date.now(), mapa, info: `${info}; ${mapa.size} SAPIDs` }
 }
 
-/* ================= centros de custo: org → CEP ================= */
-
-async function carregarCcs(ctx: Context, cfg: Config): Promise<Lista<CepCC>> {
+async function carregarCcs(ctx: Context): Promise<Lista<CepCC>> {
   const mapa = new Map<string, CepCC>()
 
   const info = await scrollTudo(
     ctx,
-    cfg,
     'cost_centers',
     'id,name,organization,addresses',
     (cc) => {
@@ -205,8 +207,6 @@ async function carregarCcs(ctx: Context, cfg: Config): Promise<Lista<CepCC>> {
 
   return { em: Date.now(), mapa, info: `${info}; ${mapa.size} orgs com CEP` }
 }
-
-/* ================= cache genérico ================= */
 
 async function obter<T>(
   atual: Lista<T> | null,
@@ -236,41 +236,34 @@ async function obter<T>(
   return p
 }
 
-const obterOrgs = (ctx: Context, cfg: Config, forcar = false) =>
+const obterOrgs = (ctx: Context, forcar = false) =>
   obter(
     orgsCache,
     orgsLoad,
     (p) => (orgsLoad = p),
     (c) => (orgsCache = c),
-    () => carregarOrgs(ctx, cfg),
+    () => carregarOrgs(ctx),
     forcar
   )
 
-const obterCcs = (ctx: Context, cfg: Config, forcar = false) =>
+const obterCcs = (ctx: Context, forcar = false) =>
   obter(
     ccsCache,
     ccsLoad,
     (p) => (ccsLoad = p),
     (c) => (ccsCache = c),
-    () => carregarCcs(ctx, cfg),
+    () => carregarCcs(ctx),
     forcar
   )
 
-/* ================= principal ================= */
-
-export async function resolverCep(
-  ctx: Context,
-  sapId: string,
-  cfg: Config,
-  diag: Diag
-) {
+export async function resolverCep(ctx: Context, sapId: string, diag: Diag) {
   const alvo = normSap(sapId)
 
-  let orgs = await obterOrgs(ctx, cfg)
+  let orgs = await obterOrgs(ctx)
   let org = orgs.mapa.get(alvo)
 
   if (!org) {
-    orgs = await obterOrgs(ctx, cfg, true)
+    orgs = await obterOrgs(ctx, true)
     org = orgs.mapa.get(alvo)
   }
 
@@ -284,11 +277,11 @@ export async function resolverCep(
 
   diag.push(['Organização', `${org.name} (${org.id})`])
 
-  let ccs = await obterCcs(ctx, cfg)
+  let ccs = await obterCcs(ctx)
   let hit = ccs.mapa.get(org.id)
 
   if (!hit) {
-    ccs = await obterCcs(ctx, cfg, true)
+    ccs = await obterCcs(ctx, true)
     hit = ccs.mapa.get(org.id)
   }
 

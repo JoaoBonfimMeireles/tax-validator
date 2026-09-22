@@ -42,7 +42,7 @@ export class VtexApi extends ExternalClient {
   }
 
   public produtoPorRefId(refId: string, token: string) {
-    return safe<any>(() =>
+    return safe(() =>
       this.http.getRaw(
         `/api/catalog_system/pvt/products/productgetbyrefid/${encodeURIComponent(
           refId
@@ -53,7 +53,7 @@ export class VtexApi extends ExternalClient {
   }
 
   public simular(skuId: string, sellerId: string, cep: string, sc: string) {
-    return safe<any>(() =>
+    return safe(() =>
       this.http.postRaw(
         '/api/checkout/pub/orderForms/simulation',
         {
@@ -67,7 +67,7 @@ export class VtexApi extends ExternalClient {
   }
 
   public inventario(skuId: string, token: string) {
-    return safe<any>(() =>
+    return safe(() =>
       this.http.getRaw(
         `/api/logistics/pvt/inventory/skus/${encodeURIComponent(skuId)}`,
         {
@@ -78,13 +78,12 @@ export class VtexApi extends ExternalClient {
     )
   }
 
-  /** GET no Master Data SEM cache/memoização do IO (necessário para o scroll paginar). */
   public mdGet(
     path: string,
     params: Record<string, any>,
     headers: Record<string, string>
   ) {
-    return safe<any>(() =>
+    return safe(() =>
       this.http.getRaw(path, {
         params,
         headers: {

@@ -35,9 +35,7 @@
     "support": {
       "url": "https://www.vtex.com.br"
     },
-    "availableCountries": [
-      "*"
-    ]
+    "availableCountries": ["*"]
   },
   "settingsSchema": {
     "title": "Validador de Impostos (Tax API Whirlpool)",
@@ -45,16 +43,6 @@
     "properties": {
       "basicAuth": {
         "title": "BASIC (client_id:secret em Base64)",
-        "type": "string",
-        "access": "private"
-      },
-      "appKey": {
-        "title": "VTEX AppKey para ler organizações/centros de custo (opcional)",
-        "type": "string",
-        "default": ""
-      },
-      "appToken": {
-        "title": "VTEX AppToken (opcional)",
         "type": "string",
         "access": "private"
       },
@@ -67,46 +55,6 @@
         "title": "URL da Tax API",
         "type": "string",
         "default": "https://api.whirlpool.com/d2c/v1/merx2/ecc-service/tax-api"
-      },
-      "paymentCode": {
-        "title": "Payment code",
-        "type": "string",
-        "default": "H001"
-      },
-      "salesChannel": {
-        "title": "Política comercial (sc)",
-        "type": "string",
-        "default": "1"
-      },
-      "sellerIdPadrao": {
-        "title": "Seller padrão",
-        "type": "string",
-        "default": "1"
-      },
-      "warehousePadrao": {
-        "title": "Warehouse padrão (fallback)",
-        "type": "string",
-        "default": ""
-      },
-      "eanPadrao": {
-        "title": "EAN padrão",
-        "type": "string",
-        "default": "0"
-      },
-      "dockId": {
-        "title": "Dock ID",
-        "type": "string",
-        "default": "0"
-      },
-      "taxCode": {
-        "title": "Tax code",
-        "type": "string",
-        "default": ""
-      },
-      "orderDateFixa": {
-        "title": "Data fixa do pedido (AAAAMMDD, vazio = hoje)",
-        "type": "string",
-        "default": ""
       }
     }
   },

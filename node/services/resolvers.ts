@@ -1,4 +1,4 @@
-import type { Config } from '../utils/config'
+import { SALES_CHANNEL, SELLER_ID_PADRAO } from '../utils/constants'
 import { tentarJson } from '../utils/http'
 import type { Diag, Produto } from '../utils/tax'
 
@@ -6,13 +6,12 @@ async function buscarNaSearch(
   ctx: Context,
   campo: string,
   valor: string,
-  identMatch: string,
-  cfg: Config
+  identMatch: string
 ) {
   const res = await ctx.clients.vtexApi.buscarProdutos(
     campo,
     valor,
-    cfg.salesChannel
+    SALES_CHANNEL
   )
 
   if (res.status === 0 || res.status >= 300)
@@ -52,7 +51,7 @@ async function buscarNaSearch(
   const sellers: any[] = item.sellers || []
   const sellerId =
     (sellers.find((s) => s.sellerDefault) || sellers[0] || {}).sellerId ||
-    cfg.sellerIdPadrao
+    SELLER_ID_PADRAO
 
   const resolved: Produto = {
     skuId: String(item.itemId),
@@ -63,7 +62,6 @@ async function buscarNaSearch(
     refId: String(refObj?.Value || prod.productReference || identMatch),
     unitMultiplier: Number(item.unitMultiplier) || 1,
     measurementUnit: item.measurementUnit || 'un',
-    taxCode: cfg.taxCode,
     sellerId: String(sellerId),
     name: prod.productName || '',
     matchedBy: `search ${campo}=${valor}`,
@@ -75,23 +73,22 @@ async function buscarNaSearch(
 export async function resolverProduto(
   ctx: Context,
   ident: string,
-  cfg: Config,
   diag: Diag
 ): Promise<Produto> {
   const tent: string[] = []
 
-  const a = await buscarNaSearch(ctx, 'alternateIds_RefId', ident, ident, cfg)
+  const a = await buscarNaSearch(ctx, 'alternateIds_RefId', ident, ident)
 
   tent.push(`alternateIds_RefId=${ident} → ${a.info}`)
   if (a.resolved) return a.resolved
 
   if (/^[0-9]+$/.test(ident)) {
-    const b = await buscarNaSearch(ctx, 'skuId', ident, ident, cfg)
+    const b = await buscarNaSearch(ctx, 'skuId', ident, ident)
 
     tent.push(`skuId=${ident} → ${b.info}`)
     if (b.resolved) return b.resolved
 
-    const c = await buscarNaSearch(ctx, 'productId', ident, ident, cfg)
+    const c = await buscarNaSearch(ctx, 'productId', ident, ident)
 
     tent.push(`productId=${ident} → ${c.info}`)
     if (c.resolved) return c.resolved
@@ -107,7 +104,7 @@ export async function resolverProduto(
   const pr = e.status > 0 && e.status < 300 ? tentarJson(e.data) : null
 
   if (pr?.Id) {
-    const d = await buscarNaSearch(ctx, 'productId', String(pr.Id), ident, cfg)
+    const d = await buscarNaSearch(ctx, 'productId', String(pr.Id), ident)
 
     tent.push(`productId=${pr.Id} → ${d.info}`)
     if (d.resolved) return d.resolved
@@ -121,14 +118,11 @@ export async function resolverProduto(
   )
 }
 
-/* ---------------- ENTREGA / WAREHOUSE ---------------- */
-
 export async function resolverEntrega(
   ctx: Context,
   skuId: string,
   sellerId: string,
-  cep: string,
-  cfg: Config
+  cep: string
 ) {
   const out = {
     warehouseId: '',
@@ -141,9 +135,9 @@ export async function resolverEntrega(
 
   const sim = await vtexApi.simular(
     skuId,
-    sellerId || cfg.sellerIdPadrao,
+    sellerId || SELLER_ID_PADRAO,
     cep,
-    cfg.salesChannel
+    SALES_CHANNEL
   )
   let sla0: any = null
 
@@ -199,15 +193,10 @@ export async function resolverEntrega(
     }
   }
 
-  if (!out.warehouseId && cfg.warehousePadrao) {
-    out.warehouseId = cfg.warehousePadrao
-    out.warehouseSource = 'configuração "Warehouse padrão"'
-  }
-
   if (!out.warehouseId) {
     throw new Error(
       `Não consegui resolver o warehouseId (simulação sem SLA para o CEP ${cep} e inventário indisponível). ` +
-        'Confira o CEP, sua permissão de Logística no admin, ou preencha "Warehouse padrão" nas configurações do app.'
+        'Confira o CEP e a permissão de Logística do usuário logado no admin.'
     )
   }
 

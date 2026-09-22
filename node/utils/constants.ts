@@ -1,0 +1,6 @@
+export const SALES_CHANNEL = '1'
+export const SELLER_ID_PADRAO = '1'
+export const EAN_PADRAO = '0'
+export const DOCK_ID = '0'
+export const PAYMENT_CODE = 'H001'
+export const TAX_CODE = ''

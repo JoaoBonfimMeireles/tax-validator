@@ -6,7 +6,6 @@ export interface Resp<T = any> {
   headers: Record<string, any>
 }
 
-/** Equivalente ao muteHttpExceptions: nunca lança erro, devolve status + corpo + headers. */
 export async function safe<T = any>(
   fn: () => Promise<IOResponse<T>>
 ): Promise<Resp<T>> {
@@ -29,7 +28,6 @@ export async function safe<T = any>(
 
 export const paraHttp = (url: string) => url.replace(/^https:\/\//i, 'http://')
 
-/** Objeto → devolve igual; string JSON → parse; string não-JSON → undefined. */
 export function tentarJson(d: unknown): any {
   if (typeof d !== 'string') return d
   try {
